@@ -12,6 +12,7 @@
     "install": "^0.13.0",
     "npm": "^6.14.8",
     "pdfjs-dist": "^2.4.456",
+    "puppeteer": "^5.2.1",
     "tmp-promise": "^3.0.2",
     "webvtt-parser": "^2.1.2",
     "yargs": "^16.0.0"

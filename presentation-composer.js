@@ -97,47 +97,70 @@ async function getSlidesTransitionsFromCaptions(captionPath) {
   return transitions;
 }
 
-async function generateSlideImages(pdfPath, height, tmpdir) {
+async function generateHTMLSlideImages(baseurl, transitions, height, tmpdir) {
+  const puppeteer = require('puppeteer');
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  const images = {};
+  page.setDefaultTimeout(60000);
+  await page.setViewport({
+    width: height*1280/720,
+    height: height,
+    deviceScaleFactor: 1,
+  });
+  for (let pageNumber of transitions.map(t => t.slideNum)) {
+    await page.goto(baseurl + '#' + pageNumber);
+    const path = tmpdir + '/slide-' + pageNumber + '.png';
+    await page.screenshot({path});
+    images[pageNumber] = path;
+    await new Promise((res, rej) => setTimeout(res, 1000));
+  }
+  await browser.close();
+  return images;
+}
+
+async function generatePDFSlideImages(pdfPath, height, tmpdir) {
   const pdfjsLib = require("pdfjs-dist/es5/build/pdf.js");
 
   const data = new Uint8Array(await fs.readFile(pdfPath));
   var loadingTask = pdfjsLib.getDocument({
     data: data
   });
-  return loadingTask.promise
-    .then(pdfDocument => {
-      return Promise.all([...Array(pdfDocument.numPages).keys()].map(pageNumber => {
-        pdfDocument.getPage(pageNumber + 1).then(function(page) {
-          // Make slides fit the available space (Note the need to convert from
-          // CSS points to CSS pixels for page dimensions)
-          const scale = (height / page.view[3]);
-          const viewport = page.getViewport({ scale });
-          // from https://github.com/mozilla/pdf.js/blob/master/examples/node/pdf2png/pdf2png.js#L76
-          const canvasFactory = new NodeCanvasFactory();
-          const canvasAndContext = canvasFactory.create(
-            viewport.width,
-            viewport.height
-          );
-          const renderContext = {
-            canvasContext: canvasAndContext.context,
-            viewport: viewport,
-            canvasFactory: canvasFactory,
-          };
-
-          const renderTask = page.render(renderContext);
-          return renderTask.promise.then(function () {
-            // Convert the canvas to an image buffer.
-            var image = canvasAndContext.canvas.toBuffer();
-            return fs.writeFile(tmpdir + "/slide-" + pageNumber + ".png", image).then(() => console.log("Converted slide " + pageNumber + " from PDF file to a PNG image."));
-          });
-        });
-      }));
-    });
+  const pdfDocument = await loadingTask.promise;
+  const images = {};
+  for (let i = 0 ; i < pdfDocument.numPages; i++) {
+    const pageNumber = i + 1;
+    const page = await pdfDocument.getPage(pageNumber);
+    const scale = (height / page.view[3]);
+    const viewport = page.getViewport({ scale });
+    // from https://github.com/mozilla/pdf.js/blob/master/examples/node/pdf2png/pdf2png.js#L76
+    const canvasFactory = new NodeCanvasFactory();
+    const canvasAndContext = canvasFactory.create(
+      viewport.width,
+      viewport.height
+    );
+    const renderContext = {
+      canvasContext: canvasAndContext.context,
+      viewport: viewport,
+      canvasFactory: canvasFactory,
+    };
+    const renderTask = page.render(renderContext);
+    await renderTask.promise;
+    // Convert the canvas to an image buffer.
+    const image = canvasAndContext.canvas.toBuffer();
+    const path = tmpdir + "/slide-" + pageNumber + ".png";
+    await fs.writeFile(path, image);
+    images[pageNumber] = path;
+    console.log("Converted slide " + pageNumber + " from PDF file to a PNG image.");
+  }
+  return images;
 }
 
-async function generateSlideVideo(slidePath, height, transitions, duration, tmpdir) {
+async function generateSlideVideo(slidePath, slideFormat, height, transitions, duration, tmpdir) {
   // TODO check that all the slides referenced in transitions exist
-  await generateSlideImages(slidePath, height, tmpdir);
+  const images = slideFormat === "url" ?
+        await generateHTMLSlideImages(slidePath, transitions, height, tmpdir)
+        : await generatePDFSlideImages(slidePath, height, tmpdir);
   console.log(JSON.stringify(transitions, null, 2), duration);
   for (let i = 0 ; i < transitions.length ; i++) {
     let {start, slideNum} = transitions[i];
@@ -150,7 +173,7 @@ async function generateSlideVideo(slidePath, height, transitions, duration, tmpd
     } else {
       to = duration;
     }
-    const command = ffmpeg(tmpdir + "/slide-" + (slideNum - 1) + ".png").inputOptions([
+    const command = ffmpeg(images[slideNum]).inputOptions([
       "-f", "image2",
       "-loop 1",
       "-framerate 1",
@@ -229,12 +252,12 @@ async function concatVideos(output, fadeDuration, ...videos) {
   return ffmpegWrapper(command, output);
 }
 
-async function process({captionPath, transitionsPath, videoPath, slidePath, outputPath, height, audioonly, introPath, outroPath}) {
+async function process({captionPath, transitionsPath, videoPath, slidePath, slideFormat, outputPath, height, audioonly, introPath, outroPath}) {
   const {path: tmpdir} = await tmp.dir();
   const transitions = captionPath ? await getSlidesTransitionsFromCaptions(captionPath) : getSlidesTransitionsFromText(transitionsPath);
   // TODO check that transitions start are monotically increasing
   const duration = await getVideoDuration(videoPath);
-  const slideVideoPath = await generateSlideVideo(slidePath, height, transitions, duration, tmpdir);
+  const slideVideoPath = await generateSlideVideo(slidePath, slideFormat, height, transitions, duration, tmpdir);
   let contentVid;
   if (audioonly) {
     contentVideoPath = await generateAudioVideo(slideVideoPath, videoPath, tmpdir);
@@ -289,13 +312,21 @@ async function cli() {
           alias: 's',
           describe: 'path to the slides'
         })
+        .option('slideformat', {
+          describe: 'Format of the slides - one of "pdf" or "url"',
+          default: "pdf",
+          options: ["pdf", "url"]
+        })
         .option('output', {
           alias: 'o',
           describe: 'path where to generate the final video'
         })
         .demandOption(['video', 'slides', 'output'], '')
         .check(argv =>  {
-          const paths = ["video", "slides"];
+          const paths = ["video"];
+          if (argv.slideformat !== "url") {
+            paths.push("slides");
+          }
           if (!argv.captions && !argv.transitions) {
             throw new Error("Either captions or transitions need to be set");
           } else if (argv.captions && argv.transitions) {
@@ -320,7 +351,7 @@ async function cli() {
         })
         .help()
         .argv;
-  return process({captionPath: argv.captions, videoPath: argv.video, slidePath: argv.slides, outputPath: argv.output, height: argv.height, audioonly: argv.audioonly, introPath: argv.intro, outroPath: argv.outro});
+  return process({captionPath: argv.captions, videoPath: argv.video, slidePath: argv.slides, outputPath: argv.output, height: argv.height, audioonly: argv.audioonly, introPath: argv.intro, outroPath: argv.outro, slideFormat: argv.slideformat});
 }
 
 /**************************************************
