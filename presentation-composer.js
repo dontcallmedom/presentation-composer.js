@@ -196,10 +196,7 @@ async function generatePipVideo(slidePath, videoPath, height, tmpdir) {
         .input(videoPath)
         .complexFilter(
           [
-            {
-              filter: 'fps', options:'30000/1001',
-              outputs: 'slides'
-            },
+            "pad=ceil(iw/2)*2:ceil(ih/2)*2,fps=30000/1001[slides]",
             {
               filter: 'scale', options: '-1:' + height / 4,
               outputs: 'pip'
