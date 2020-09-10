@@ -203,11 +203,12 @@ async function generateAudioVideo(slidePath, videoPath, tmpdir) {
   const command = ffmpeg()
         .input(slidePath)
         .input(videoPath)
-        .inputOption(["-vn"])
+        .inputOptions(["-vn"])
         .outputOptions([
           '-pix_fmt yuv420p',
           '-r 30000/1001',
-          '-tune stillimage'
+          '-tune stillimage',
+          '-vf pad=ceil(iw/2)*2:ceil(ih/2)*2'
         ]);
   return ffmpegWrapper(command, tmpdir + '/slides.mp4');
 }
