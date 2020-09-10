@@ -244,7 +244,7 @@ async function concatVideos(output, fadeDuration, ...videos) {
     const video = videos[i];
     command.input(video.path);
     // TODO make scale dependent on parameters
-    filtercomplex.push(`[${i}:v]scale=1280x720,` + (i > 0 ? `fade=type=in:duration=${fadeDuration},` : '') + (i < videos.length - 1 ? `fade=type=out:duration=${fadeDuration}:start_time=${video.duration - fadeDuration},`: '') + `setpts=PTS-STARTPTS[v${i}]`);
+    filtercomplex.push(`[${i}:v]scale=w=1280:h=720:force_original_aspect_ratio=1,pad=1280:720:(ow-iw)/2:(oh-ih)/2,` + (i > 0 ? `fade=type=in:duration=${fadeDuration},` : '') + (i < videos.length - 1 ? `fade=type=out:duration=${fadeDuration}:start_time=${video.duration - fadeDuration},`: '') + `setpts=PTS-STARTPTS[v${i}]`);
     concat += `[v${i}][${i}:a]`;
   }
   filtercomplex.push(concat + `concat=n=${videos.length}:v=1:a=1[v][a]`)
