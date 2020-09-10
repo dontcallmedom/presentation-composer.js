@@ -1,0 +1,19 @@
+{
+  "name": "presentation-composer",
+  "version": "1.0.0",
+  "description": "This tool takes PDF slides, a list of timed slide transitions, and a video file and creates a new video that overlays as picture-in-picture the original video on top of the slides.",
+  "main": "presentation-composer.js",
+  "author": "Dominique Hazael-Massieux <dom@w3.org> (http://www.w3.org/People/Dom/)",
+  "license": "MIT",
+  "dependencies": {
+    "assert": "^2.0.0",
+    "canvas": "^2.6.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "install": "^0.13.0",
+    "npm": "^6.14.8",
+    "pdfjs-dist": "^2.4.456",
+    "tmp-promise": "^3.0.2",
+    "webvtt-parser": "^2.1.2",
+    "yargs": "^16.0.0"
+  }
+}
