@@ -176,9 +176,17 @@ async function generateSlideVideo(slidePath, height, transitions, duration, tmpd
                     )
 }
 
-async function generateAudioVideo(slideVid, videoPath, tmpDir) {
-  // TODO implement
-  throw new Error("Not implemented yet");
+async function generateAudioVideo(slidePath, videoPath, tmpdir) {
+  const command = ffmpeg()
+        .input(slidePath)
+        .input(videoPath)
+        .inputOption(["-vn"])
+        .outputOptions([
+          '-pix_fmt yuv420p',
+          '-r 30000/1001',
+          '-tune stillimage'
+        ]);
+  return ffmpegWrapper(command, tmpdir + '/slides.mp4');
 }
 
 /* ffmpeg -i <videoPath> -i <slidePath> -filter_complex "[1] fps=30000/1001 [slides]; scale=-1:360 [pip]; [slides][pip] overlay=main_w-overlay_w-10:main_h-overlay_h-10" -pix_fmt yuv420p -r 30000/1001 -tune stillimage <tmpDir/content.mp4> */
