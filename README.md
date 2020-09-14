@@ -1,6 +1,6 @@
 # presentation-composer.js
 
-This tool takes PDF slides, a list of timed slide transitions, and a video file and creates a new video that overlays as picture-in-picture the original video on top of the slides.
+This tool takes slides (in PDF or HTML), a list of timed slide transitions, and a video file and creates a new video that overlays as picture-in-picture the original video on top of the slides.
 
 The transitions are given a text file with on each line a number of seconds and a slide number (space separated).
 
