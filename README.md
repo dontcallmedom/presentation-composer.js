@@ -10,6 +10,29 @@ Optionally, it adds an intro video and/or an outro video at the beginning and th
 
 This can be used to build a similar effect for audio-only recordings (without picture-in-picture overlay in this case).
 
+## Command Line
+```sh
+node presentation-composer.js  --help
+Options:
+      --version      Show version number                               [boolean]
+  -c, --captions     path to the WebVTT captions file annotated with slides
+                     transitions
+  -t, --transitions  path to a text file listing slide transitions (one line per
+                     transition, space-separated time in second and slide number
+                     per line)
+  -v, --video        path to the main video file                      [required]
+      --intro        path to the intro video file
+      --outro        path to the outro video file
+  -h, --height       height of the output video                   [default: 720]
+      --audioonly    only imports audio from the main video file, do not PiP its
+                     video content                    [boolean] [default: false]
+  -s, --slides       path to the slides                               [required]
+      --slideformat  Format of the slides - one of "pdf" or "url"
+                                                                [default: "pdf"]
+  -o, --output       path where to generate the final video           [required]
+      --help         Show help                                         [boolean]
+```
+
 ## What problem does it solve?
 * it is not always practical to be recording both the slides and the speaker at a physical event, and often, recording the slides will deteriorate their readability. For static slides, this allows to focus on recording the speaker and generate a single video afterwards
 
